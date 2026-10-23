@@ -54,6 +54,49 @@ describe('BirdScope API proxy', () => {
     expect(res.body.meta).toMatchObject({ endpoint: 'historic', regionCode: 'IL', date: '2025-11-15', upstreamCount: 3 });
   });
 
+  it('queries the day\'s checklist locations so a species seen at several locations is listed at each', async () => {
+    const falcon = (locId: string, locName: string, obsDt: string) =>
+      ({ speciesCode: 'reffal1', comName: 'Red-footed Falcon', sciName: 'Falco vespertinus', locId, locName, obsDt, lat: 32, lng: 35, subId: `S-${locId}` });
+    const locs = Array.from({ length: 60 }, (_, i) => `L${i + 1}`);
+    const { app, fetchMock } = setup((url) => {
+      if (url.pathname.startsWith('/v2/product/lists/')) return json([...locs, 'L1'].map((locId) => ({ locId })));
+      const r = url.searchParams.get('r');
+      // Like eBird: region-wide gives one record per species, r= gives one per species per location.
+      if (!r) return json([falcon('L1', 'Hulda', '2026-10-21 08:16')]);
+      return json(r.split(',').filter((id) => id === 'L1' || id === 'L55').map((id) => falcon(id, id === 'L1' ? 'Hulda' : 'Arsuf', '2026-10-21 06:32')));
+    });
+
+    const res = await request(app).get('/api/observations/historic/IL/2026/10/21?species=reffal1');
+
+    expect(res.status).toBe(200);
+    expect(res.body.observations.map((o: { locationName: string }) => o.locationName).sort()).toEqual(['Arsuf', 'Hulda']);
+    const batches = fetchMock.mock.calls
+      .map(([u]) => new URL(String(u)).searchParams.get('r'))
+      .filter((r): r is string => r !== null)
+      .map((r) => r.split(',').length);
+    expect(batches.sort((a, b) => a - b)).toEqual([10, 50]);
+    expect(res.body.meta.coverage).not.toContain('may be missing');
+  });
+
+  it('still answers from the region-wide result when the checklist feed fails', async () => {
+    const { app } = setup((url) =>
+      url.pathname.startsWith('/v2/product/lists/') ? json({}, 500) : json(historicDay),
+    );
+    const res = await request(app).get('/api/observations/historic/IL/2025/11/15?species=houspa');
+    expect(res.status).toBe(200);
+    expect(res.body.observations).toHaveLength(2);
+  });
+
+  it('warns when the checklist feed hits its 200 limit', async () => {
+    const { app } = setup((url) =>
+      url.pathname.startsWith('/v2/product/lists/')
+        ? json(Array.from({ length: 200 }, (_, i) => ({ locId: `L${i}` })))
+        : json(historicDay),
+    );
+    const res = await request(app).get('/api/observations/historic/US/2025/11/15');
+    expect(res.body.meta.coverage).toContain('some locations may be missing');
+  });
+
   it('keeps missing counts and times as null instead of inventing them', async () => {
     const { app } = setup(() => json(historicDay));
     const res = await request(app).get('/api/observations/historic/IL/2025/11/15?species=comkin1');

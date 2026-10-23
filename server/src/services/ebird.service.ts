@@ -35,6 +35,40 @@ export interface ObservationsResponse {
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
+/** eBird's cap on the checklist feed (maxResults=1..200). */
+const CHECKLIST_FEED_MAX = 200;
+/** eBird accepts up to 50 location ids in the historic endpoint's r parameter. */
+const HISTORIC_MAX_LOCATIONS = 50;
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
+function checklistLocationIds(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const ids = new Set<string>();
+  for (const c of raw) {
+    const locId = (c as { locId?: unknown })?.locId;
+    if (typeof locId === 'string' && locId) ids.add(locId);
+  }
+  return [...ids];
+}
+
+/** The region-wide record repeats one of the per-location records; keep the first of each species+location. */
+function dedupeBySpeciesAndLocation(raw: unknown[]): unknown[] {
+  const seen = new Set<string>();
+  return raw.filter((r) => {
+    const o = r as { speciesCode?: unknown; locId?: unknown };
+    if (typeof o?.speciesCode !== 'string' || typeof o.locId !== 'string') return true;
+    const k = `${o.speciesCode}|${o.locId}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
 /**
  * eBird data access: taxonomy, countries, recent and historic observations.
  * Taxonomy and country lists are cached for hours; observation results for a
@@ -120,9 +154,13 @@ export class EbirdService {
 
   /**
    * GET /data/obs/{regionCode}/historic/{y}/{m}/{d}
-   * eBird returns one record per species per location for that date
-   * (rank=mrec picks the latest observation). The endpoint has no species
-   * filter, so filtering by species code happens here.
+   * For a whole region eBird returns only one record per species for the date
+   * (rank=mrec picks the latest). Passing location ids (r=, max 50 per call)
+   * gives one record per species per location instead, so the day's locations
+   * are read from the checklist feed (GET /product/lists/{regionCode}/{y}/{m}/{d})
+   * and queried in batches. The region-wide result is merged in for locations
+   * the feed missed. The endpoint has no species filter, so filtering by
+   * species code happens here.
    */
   async getHistoric(
     regionCode: string,
@@ -132,33 +170,46 @@ export class EbirdService {
     const maxResults = 10_000; // historic results are filtered afterwards, so ask for the documented maximum
     const ymd = `${date.year}/${pad(date.month)}/${pad(date.day)}`;
     const key = `historic:${regionCode}:${ymd}`;
+    const path = `/data/obs/${regionCode}/historic/${ymd}`;
+    const query = { rank: 'mrec', detail: 'simple', maxResults, sppLocale: 'en' };
 
     let full: ObservationsResponse;
     try {
-      // Cache the unfiltered day so different species on the same date reuse one request.
+      // Cache the unfiltered day so different species on the same date reuse the same requests.
       full = await this.observationCache.getOrLoad(key, this.config.observationsTtlMs, async () => {
-        const raw = await this.client.get<unknown>(`/data/obs/${regionCode}/historic/${ymd}`, {
-          rank: 'mrec',
-          detail: 'simple',
-          maxResults,
-          sppLocale: 'en',
-        });
-        const observations = normalizeObservations(raw);
-        const upstreamCount = Array.isArray(raw) ? raw.length : 0;
+        const [regionWide, checklists] = await Promise.all([
+          this.client.get<unknown>(path, query),
+          // Best effort: without the feed we still have the region-wide records.
+          this.client
+            .get<unknown>(`/product/lists/${regionCode}/${ymd}`, { maxResults: CHECKLIST_FEED_MAX })
+            .catch(() => []),
+        ]);
+        const locIds = checklistLocationIds(checklists);
+        const perLocation = await Promise.all(
+          chunk(locIds, HISTORIC_MAX_LOCATIONS).map((ids) => this.client.get<unknown>(path, { ...query, r: ids.join(',') })),
+        );
+
+        const responses = [...perLocation, regionWide].map((r) => (Array.isArray(r) ? r : []));
+        const raw = dedupeBySpeciesAndLocation(responses.flat());
+        const feedCapped = Array.isArray(checklists) && checklists.length >= CHECKLIST_FEED_MAX;
         return {
-          observations,
+          observations: normalizeObservations(raw),
           meta: {
             endpoint: 'historic',
             regionCode,
             speciesCode: null,
             backDays: null,
             date: `${date.year}-${pad(date.month)}-${pad(date.day)}`,
-            upstreamCount,
-            truncated: upstreamCount >= maxResults,
+            upstreamCount: raw.length,
+            truncated: responses.some((r) => r.length >= maxResults),
             maxResults,
             coverage:
               'One record per species per location for this date (the latest observation, eBird rank=mrec). ' +
-              'Individual checklists and repeat sightings at the same location are not listed. ' +
+              'Repeat sightings at the same location are not listed. ' +
+              (feedCapped
+                ? `This region had more than ${CHECKLIST_FEED_MAX} checklists that day, so some locations may be missing; ` +
+                  'pick a smaller region for complete results. '
+                : '') +
               'Sensitive species are withheld by eBird.',
           },
         };
