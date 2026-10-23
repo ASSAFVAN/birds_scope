@@ -16,6 +16,11 @@
 .map {
   position: absolute;
   inset: 0;
+  // Leaflet forces an inline position: relative when it initialises before this
+  // stylesheet applies (e.g. inside a not-yet-attached tab); the explicit size
+  // keeps the map filling .map-wrap in that case too.
+  width: 100%;
+  height: 100%;
   // Leaflet panes use z-index up to ~1000; keep them under Material overlays.
   z-index: 0;
   isolation: isolate;
