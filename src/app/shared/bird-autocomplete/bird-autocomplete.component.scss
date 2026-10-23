@@ -1,0 +1,28 @@
+:host {
+  display: block;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.opt {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  padding: 4px 0;
+}
+
+.opt-common {
+  font-weight: 500;
+}
+
+.opt-sci {
+  font-style: italic;
+  font-size: 0.85em;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.error-hint {
+  color: var(--mat-sys-error);
+}

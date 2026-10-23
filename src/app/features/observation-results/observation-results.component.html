@@ -1,0 +1,108 @@
+<section class="results" aria-label="Search results">
+  <header class="results-bar">
+    <div class="summary" aria-live="polite">
+      @switch (store.status()) {
+        @case ('idle') {
+          <span class="muted">Choose your search and press Search.</span>
+        }
+        @case ('loading') {
+          <span>Searching eBird…</span>
+        }
+        @case ('success') {
+          <strong>{{ store.count() }}</strong>
+          observation{{ store.count() === 1 ? '' : 's' }}
+          @if (store.unmappableCount() > 0) {
+            <span class="muted">· {{ store.unmappableCount() }} without coordinates</span>
+          }
+        }
+        @case ('error') {
+          <span class="muted">No results</span>
+        }
+      }
+    </div>
+
+    @if (!wide()) {
+      <mat-button-toggle-group
+        hideSingleSelectionIndicator
+        [value]="store.view()"
+        (change)="setView($event.value)"
+        aria-label="Result view"
+      >
+        <mat-button-toggle value="map"><mat-icon>map</mat-icon> Map</mat-button-toggle>
+        <mat-button-toggle value="table"><mat-icon>table_rows</mat-icon> Table</mat-button-toggle>
+      </mat-button-toggle-group>
+    }
+  </header>
+
+  @if (store.loading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Loading observations" />
+  }
+
+  @if (store.error(); as error) {
+    <div class="message message--error" role="alert">
+      <mat-icon aria-hidden="true">{{ error.code === 'RATE_LIMITED' ? 'hourglass_top' : 'error_outline' }}</mat-icon>
+      <div>
+        <strong>
+          @switch (error.code) {
+            @case ('API_KEY_MISSING') { eBird API key missing }
+            @case ('API_KEY_REJECTED') { eBird API key rejected }
+            @case ('RATE_LIMITED') { Too many requests }
+            @case ('UPSTREAM_TIMEOUT') { eBird timed out }
+            @case ('HISTORIC_UNAVAILABLE') { Historic data unavailable }
+            @case ('NETWORK_ERROR') { Server not reachable }
+            @case ('UPSTREAM_UNREACHABLE') { eBird not reachable }
+            @default { Search failed }
+          }
+        </strong>
+        <p>{{ error.message }}</p>
+      </div>
+      @if (error.retryable) {
+        <button mat-stroked-button type="button" (click)="store.search()">Try again</button>
+      }
+    </div>
+  }
+
+  @if (store.isEmptyResult()) {
+    <div class="message" role="status">
+      <mat-icon aria-hidden="true">travel_explore</mat-icon>
+      <div>
+        <strong>No matching observations</strong>
+        <p>
+          @if (store.mode === 'history') {
+            eBird has no records of this species in this country on that date. Try a nearby date or another country.
+          } @else {
+            eBird has no recent records for this search in the last {{ store.meta()?.backDays ?? 10 }} days.
+          }
+        </p>
+      </div>
+    </div>
+  }
+
+  @if (store.meta(); as meta) {
+    <p class="coverage">
+      <mat-icon aria-hidden="true" inline>info</mat-icon>
+      {{ meta.coverage }}
+      @if (meta.truncated) {
+        <strong>Results reached eBird's limit of {{ meta.maxResults }} records and may be incomplete.</strong>
+      }
+    </p>
+  }
+
+  <div class="panes" [class.panes--split]="wide()">
+    <app-observation-map
+      class="pane pane--map"
+      [hidden]="!showMap()"
+      [observations]="store.observations()"
+      [selectedId]="store.selectedId()"
+      [active]="mapActive()"
+      (markerSelect)="store.select($event)"
+    />
+    <app-observations-table
+      class="pane pane--table"
+      [hidden]="!showTable()"
+      [observations]="store.observations()"
+      [selectedId]="store.selectedId()"
+      (rowSelect)="store.select($event)"
+    />
+  </div>
+</section>

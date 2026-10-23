@@ -1,0 +1,13 @@
+<div class="map-wrap">
+  <div #mapEl class="map" role="region" aria-label="Map of bird observations"></div>
+
+  @if (observations().length > 0 && summary().rendered === 0) {
+    <div class="map-overlay" role="status">
+      None of these observations have usable coordinates, so there is nothing to pin. See the table view.
+    </div>
+  } @else if (summary().skipped > 0) {
+    <div class="map-note" role="status">
+      {{ summary().skipped }} observation{{ summary().skipped === 1 ? '' : 's' }} without valid coordinates not shown on the map.
+    </div>
+  }
+</div>

@@ -1,0 +1,33 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "BirdScope: dev (API + web)",
+      "type": "npm",
+      "script": "dev",
+      "isBackground": true,
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": {
+        "owner": "birdscope",
+        "pattern": { "regexp": "^__never_matches__$" },
+        "background": {
+          "activeBegin": "Building|Changes detected",
+          "activeEnd": "Local:|Application bundle generation (complete|failed)"
+        }
+      }
+    },
+    {
+      "label": "BirdScope: test",
+      "type": "npm",
+      "script": "test",
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "BirdScope: build",
+      "type": "npm",
+      "script": "build",
+      "problemMatcher": []
+    }
+  ]
+}

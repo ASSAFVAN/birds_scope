@@ -1,0 +1,58 @@
+<mat-toolbar class="app-bar">
+  <span class="brand">
+    <svg class="brand-mark" viewBox="0 0 32 32" width="28" height="28" aria-hidden="true">
+      <circle cx="16" cy="16" r="15" fill="currentColor" opacity="0.14" />
+      <path
+        d="M6.5 18.5c3.6-.3 5.9-2.6 7.7-5.6 1.2-2 3.1-3.8 5.9-3.8 2.3 0 3.9 1.1 4.8 2.8l3.6.7-3.2 2c0 6-4.9 10.3-11.1 10.3-3.1 0-5.6-1-7.7-2.6l-3 1 2.4-2.3c-.2-.8-.2-1.7-.2-2.5z"
+        fill="currentColor"
+      />
+      <circle cx="21.2" cy="12.4" r="1" fill="var(--mat-sys-surface)" />
+    </svg>
+    <span class="brand-name">BirdScope</span>
+  </span>
+  <span class="spacer"></span>
+  <button
+    mat-icon-button
+    type="button"
+    (click)="cycleTheme()"
+    [matTooltip]="'Theme: ' + theme()"
+    [attr.aria-label]="'Change theme (current: ' + theme() + ')'"
+  >
+    <mat-icon>{{ themeIcon() }}</mat-icon>
+  </button>
+</mat-toolbar>
+
+<main class="content">
+  <mat-tab-group
+    mat-stretch-tabs="false"
+    mat-align-tabs="start"
+    preserveContent
+    [selectedIndex]="activeSection()"
+    (selectedIndexChange)="activeSection.set($event)"
+    aria-label="BirdScope sections"
+  >
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">schedule</mat-icon>
+        Recent Observations
+      </ng-template>
+      <div class="tab-body">
+        <app-recent-observations [active]="activeSection() === 0" />
+      </div>
+    </mat-tab>
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">event</mat-icon>
+        Observation History
+      </ng-template>
+      <div class="tab-body">
+        <app-observation-history [active]="activeSection() === 1" />
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</main>
+
+<footer class="footer">
+  Bird data from <a href="https://ebird.org" target="_blank" rel="noopener">eBird</a>, Cornell Lab of Ornithology.
+  Map tiles &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors.
+</footer>

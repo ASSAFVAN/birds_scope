@@ -1,0 +1,47 @@
+:host {
+  display: block;
+  height: 100%;
+  min-height: 320px;
+}
+
+.map-wrap {
+  position: relative;
+  height: 100%;
+  min-height: inherit;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--mat-sys-outline-variant);
+}
+
+.map {
+  position: absolute;
+  inset: 0;
+  // Leaflet panes use z-index up to ~1000; keep them under Material overlays.
+  z-index: 0;
+  isolation: isolate;
+}
+
+.map-overlay,
+.map-note {
+  position: absolute;
+  z-index: 500;
+  left: 12px;
+  right: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--mat-sys-surface-container-high);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-small);
+  box-shadow: var(--mat-sys-level2);
+}
+
+.map-overlay {
+  top: 50%;
+  transform: translateY(-50%);
+  text-align: center;
+}
+
+.map-note {
+  bottom: 24px;
+  pointer-events: none;
+}

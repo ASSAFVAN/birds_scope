@@ -1,0 +1,63 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.app-bar {
+  position: sticky;
+  top: 0;
+  z-index: 1001; // above Leaflet controls
+  background: var(--mat-sys-surface-container);
+  color: var(--mat-sys-on-surface);
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--mat-sys-primary);
+}
+
+.brand-name {
+  font: var(--mat-sys-title-large);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--mat-sys-on-surface);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.content {
+  flex: 1;
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 0 24px;
+}
+
+.tab-icon {
+  margin-inline-end: 8px;
+}
+
+.tab-body {
+  padding: 16px;
+
+  @media (min-width: 720px) {
+    padding: 20px 24px;
+  }
+}
+
+.footer {
+  padding: 12px 16px 20px;
+  text-align: center;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+
+  a {
+    color: inherit;
+  }
+}

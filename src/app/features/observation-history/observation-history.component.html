@@ -1,0 +1,36 @@
+<div class="section">
+  <mat-card appearance="outlined" class="search-card">
+    <form class="search-form" (submit)="submit($event)" novalidate aria-label="Observation history search">
+      <h2 class="section-title">Observation history</h2>
+      <p class="section-sub">Observations of one species in one country on a single date.</p>
+
+      <div class="fields">
+        <app-bird-autocomplete
+          class="field field--species"
+          [(selected)]="store.species"
+          [errorText]="store.submitted() ? store.speciesError() : null"
+        />
+        <app-country-select class="field field--country" [(code)]="store.countryCode" />
+      </div>
+
+      <app-historic-date-picker [(value)]="store.date" [errorText]="store.dateError()" />
+
+      <div class="actions">
+        <span></span>
+        <button mat-flat-button type="submit" [disabled]="store.loading() || !!store.dateError()">
+          <mat-icon>search</mat-icon>
+          Search
+        </button>
+      </div>
+    </form>
+
+    <app-recent-searches
+      [entries]="recent()"
+      [disabled]="store.loading()"
+      (searchSelected)="restore($event)"
+      (clearRequested)="clearRecent()"
+    />
+  </mat-card>
+
+  <app-observation-results [active]="active()" />
+</div>

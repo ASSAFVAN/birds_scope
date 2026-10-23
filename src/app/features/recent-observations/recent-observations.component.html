@@ -1,0 +1,37 @@
+<div class="section">
+  <mat-card appearance="outlined" class="search-card">
+    <form class="search-form" (submit)="submit($event)" novalidate aria-label="Recent observations search">
+      <h2 class="section-title">Recent observations</h2>
+      <p class="section-sub">Latest sightings reported to eBird in the last 10 days.</p>
+
+      <div class="fields">
+        <app-bird-autocomplete
+          class="field field--species"
+          [(selected)]="store.species"
+          [disabled]="store.allSpecies()"
+          [errorText]="store.submitted() ? store.speciesError() : null"
+        />
+        <app-country-select class="field field--country" [(code)]="store.countryCode" />
+      </div>
+
+      <div class="actions">
+        <mat-slide-toggle [checked]="store.allSpecies()" (change)="store.allSpecies.set($event.checked)">
+          All species
+        </mat-slide-toggle>
+        <button mat-flat-button type="submit" [disabled]="store.loading()">
+          <mat-icon>search</mat-icon>
+          Search
+        </button>
+      </div>
+    </form>
+
+    <app-recent-searches
+      [entries]="recent()"
+      [disabled]="store.loading()"
+      (searchSelected)="restore($event)"
+      (clearRequested)="clearRecent()"
+    />
+  </mat-card>
+
+  <app-observation-results [active]="active()" />
+</div>

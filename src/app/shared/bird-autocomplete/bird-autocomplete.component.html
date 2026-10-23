@@ -1,0 +1,67 @@
+<mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
+  <mat-label>{{ label() }}</mat-label>
+  <mat-icon matPrefix aria-hidden="true">search</mat-icon>
+  <input
+    #inputEl
+    matInput
+    type="text"
+    autocomplete="off"
+    spellcheck="false"
+    placeholder="e.g. House Sparrow or Passer domesticus"
+    [value]="text()"
+    (input)="onInput(inputEl.value)"
+    [matAutocomplete]="auto"
+    [disabled]="disabled()"
+    [attr.aria-describedby]="hintId"
+    [attr.aria-invalid]="!!errorText()"
+  />
+  @if (speciesService.status() === 'loading') {
+    <mat-spinner matSuffix diameter="20" aria-label="Loading species list" />
+  } @else if (text()) {
+    <button mat-icon-button matSuffix type="button" aria-label="Clear species" (click)="clear(inputEl)">
+      <mat-icon>close</mat-icon>
+    </button>
+  }
+
+  <mat-autocomplete
+    #auto="matAutocomplete"
+    autoActiveFirstOption
+    [displayWith]="displayWith"
+    (optionSelected)="onSelected($event)"
+    panelWidth="auto"
+    class="bird-ac-panel"
+  >
+    @for (s of suggestions(); track s.speciesCode) {
+      <mat-option [value]="s">
+        <span class="opt">
+          <span class="opt-common">{{ s.commonName }}</span>
+          <span class="opt-sci">{{ s.scientificName }}</span>
+        </span>
+      </mat-option>
+    }
+    @if (showNoMatches()) {
+      <mat-option disabled class="no-match">
+        No species match “{{ text() }}”. Try another common or scientific name.
+      </mat-option>
+    }
+  </mat-autocomplete>
+
+  @if (speciesService.status() === 'error') {
+    <mat-hint [id]="hintId" class="error-hint" role="alert">
+      {{ speciesService.error()?.message }}
+      <button mat-button type="button" (click)="retry()">Retry</button>
+    </mat-hint>
+  } @else if (errorText()) {
+    <mat-hint [id]="hintId" class="error-hint" role="alert">{{ errorText() }}</mat-hint>
+  } @else {
+    <mat-hint [id]="hintId">
+      @if (speciesService.status() === 'loading') {
+        Loading the eBird species list…
+      } @else if (selected()) {
+        eBird code: {{ selected()!.speciesCode }}
+      } @else {
+        Type at least 2 letters of a common or scientific name.
+      }
+    </mat-hint>
+  }
+</mat-form-field>

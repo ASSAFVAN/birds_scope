@@ -1,0 +1,47 @@
+import { describe, expect, it } from 'vitest';
+import { makeObservation } from '../../testing/fixtures';
+import { boundsOf, buildPopupContent, isValidCoordinate, toMarkerData } from './map-markers.utils';
+
+describe('map marker utils', () => {
+  it.each([
+    [32.8, 35.0, true],
+    [-90, 180, true],
+    [null, 35, false],
+    [32.8, undefined, false],
+    [NaN, 35, false],
+    [91, 35, false],
+    [32, -181, false],
+    [0, 0, false],
+    ['32.8', 35, false],
+  ])('isValidCoordinate(%s, %s) → %s', (lat, lng, expected) => {
+    expect(isValidCoordinate(lat, lng)).toBe(expected);
+  });
+
+  it('creates markers only for valid coordinates', () => {
+    const { markers, invalidCount } = toMarkerData([
+      makeObservation({ id: 'ok' }),
+      makeObservation({ id: 'no-lat', latitude: null }),
+      makeObservation({ id: 'bad', latitude: 120 }),
+      makeObservation({ id: 'zero', latitude: 0, longitude: 0 }),
+    ]);
+    expect(markers.map((m) => m.id)).toEqual(['ok']);
+    expect(invalidCount).toBe(3);
+  });
+
+  it('computes bounds', () => {
+    expect(boundsOf([])).toBeNull();
+    expect(boundsOf([{ lat: 1, lng: 2 }, { lat: -3, lng: 5 }])).toEqual([[-3, 2], [1, 5]]);
+  });
+
+  it('renders popup text safely (no HTML injection)', () => {
+    const el = buildPopupContent(
+      makeObservation({ locationName: '<img src=x onerror=alert(1)>', count: null, time: null }),
+    );
+    expect(el.querySelector('img')).toBeNull();
+    expect(el.textContent).toContain('<img src=x onerror=alert(1)>');
+    expect(el.textContent).toContain('Present (not counted)');
+    expect(el.textContent).toContain('2025-11-15');
+    expect(el.textContent).toContain('House Sparrow');
+    expect(el.textContent).toContain('Passer domesticus');
+  });
+});

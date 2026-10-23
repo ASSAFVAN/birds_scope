@@ -1,0 +1,18 @@
+# Render Blueprint: one Node web service that serves both the API (/api) and the Angular app.
+# In Render: New > Blueprint > pick this repo, then paste your eBird key when asked.
+services:
+  - type: web
+    name: birdscope
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm ci --prefix server && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: EBIRD_API_KEY
+        sync: false
+      # Render sits behind one load balancer hop; needed for per-client rate limiting.
+      - key: TRUST_PROXY
+        value: "1"

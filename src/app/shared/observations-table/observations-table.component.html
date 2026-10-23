@@ -1,0 +1,68 @@
+<div class="table-scroll">
+  <table mat-table [dataSource]="dataSource" matSort matSortActive="observedAt" matSortDirection="desc" aria-label="Bird observations">
+    <ng-container matColumnDef="commonName">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Species</th>
+      <td mat-cell *matCellDef="let o">{{ o.commonName }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="scientificName">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Scientific name</th>
+      <td mat-cell *matCellDef="let o"><em>{{ o.scientificName }}</em></td>
+    </ng-container>
+
+    <ng-container matColumnDef="locationName">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Location</th>
+      <td mat-cell *matCellDef="let o" class="loc">{{ o.locationName ?? 'Unknown location' }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="count">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header arrowPosition="before" class="num">Count</th>
+      <td mat-cell *matCellDef="let o" class="num">
+        @if (o.count === null) {
+          <span class="muted" matTooltip="Reported as present without a count (X)">X</span>
+        } @else {
+          {{ formatCount(o.count) }}
+        }
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="observedAt">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Date</th>
+      <td mat-cell *matCellDef="let o" class="nowrap">{{ formatObservedAt(o) }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="latitude">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header arrowPosition="before" class="num">Latitude</th>
+      <td mat-cell *matCellDef="let o" class="num">{{ o.latitude === null ? '—' : o.latitude.toFixed(4) }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="longitude">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header arrowPosition="before" class="num">Longitude</th>
+      <td mat-cell *matCellDef="let o" class="num">{{ o.longitude === null ? '—' : o.longitude.toFixed(4) }}</td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="displayedColumns(); sticky: true"></tr>
+    <tr
+      mat-row
+      #row
+      *matRowDef="let o; columns: displayedColumns()"
+      [attr.data-id]="o.id"
+      [class.selected]="o.id === selectedId()"
+      [attr.aria-selected]="o.id === selectedId()"
+      tabindex="0"
+      (click)="onRowClick(o)"
+      (keydown)="onRowKey($event, o)"
+    ></tr>
+
+    <tr class="mat-row" *matNoDataRow>
+      <td class="mat-cell no-data" [attr.colspan]="displayedColumns().length">No observations to show.</td>
+    </tr>
+  </table>
+</div>
+
+<mat-paginator
+  [pageSize]="pageSize"
+  [pageSizeOptions]="pageSizeOptions"
+  showFirstLastButtons
+  aria-label="Choose page of observations"
+/>
