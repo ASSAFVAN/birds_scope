@@ -176,13 +176,15 @@ birdscope/
 
 ## 8. Deploy
 
-In production the Express server serves both the API and the built Angular app (`dist/birdscope/browser`) from one URL, so no CORS setup is needed.
+In production the site and the API share one URL, so no CORS setup is needed. On a plain Node host the Express server serves the built Angular app (`dist/birdscope/browser`) itself.
 
-**Render (blueprint included):**
+**Vercel (config included):** the Angular build is served as static files and the Express API runs as one serverless function (`api/index.mjs`), configured by `vercel.json`.
 
 1. Push this repo to GitHub.
-2. In Render, choose **New > Blueprint** and select the repo. It reads `render.yaml`.
-3. Paste your eBird key when asked for `EBIRD_API_KEY`, then deploy.
+2. In Vercel, choose **Add New > Project** and import the repo. Leave the build settings as they are; `vercel.json` sets them.
+3. Under **Environment Variables** add `EBIRD_API_KEY` (your key) and `TRUST_PROXY` = `1`, then deploy.
+
+Caches and the rate limiter live in memory, so on Vercel they are per function instance rather than global.
 
 **Any other Node host** (Railway, Fly.io, a VPS):
 
