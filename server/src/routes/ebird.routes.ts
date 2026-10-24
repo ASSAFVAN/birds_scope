@@ -11,13 +11,15 @@ export function createEbirdRouter(service: EbirdService, now: () => Date = () =>
 
   router.get('/taxonomy', async (_req, res) => {
     const species = await service.getTaxonomy();
-    res.setHeader('Cache-Control', 'public, max-age=3600');
+    // Revalidate every time (cheap 304 via ETag) so a deploy that changes the list,
+    // e.g. adding Hebrew names, reaches browsers immediately. Offline/speed is the service worker's job.
+    res.setHeader('Cache-Control', 'no-cache');
     res.json(species);
   });
 
   router.get('/countries', async (_req, res) => {
     const countries = await service.getCountries();
-    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.setHeader('Cache-Control', 'no-cache');
     res.json(countries);
   });
 

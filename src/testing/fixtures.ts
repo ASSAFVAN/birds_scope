@@ -8,6 +8,7 @@ export const HOUSE_SPARROW: BirdSpecies = {
   category: 'species',
   taxonOrder: 30000,
   familyCommonName: 'Old World Sparrows',
+  hebrewName: 'דרור הבית',
 };
 
 export const COMMON_KINGFISHER: BirdSpecies = {
@@ -17,6 +18,7 @@ export const COMMON_KINGFISHER: BirdSpecies = {
   category: 'species',
   taxonOrder: 12000,
   familyCommonName: 'Kingfishers',
+  hebrewName: 'שלדג גמדי',
 };
 
 export const SPANISH_SPARROW: BirdSpecies = {
@@ -26,6 +28,7 @@ export const SPANISH_SPARROW: BirdSpecies = {
   category: 'species',
   taxonOrder: 30001,
   familyCommonName: 'Old World Sparrows',
+  hebrewName: null,
 };
 
 export const TAXONOMY: BirdSpecies[] = [COMMON_KINGFISHER, HOUSE_SPARROW, SPANISH_SPARROW];
@@ -36,6 +39,7 @@ export function makeObservation(overrides: Partial<Observation> = {}): Observati
     speciesCode: 'houspa',
     commonName: 'House Sparrow',
     scientificName: 'Passer domesticus',
+    hebrewName: null,
     locationId: 'L1',
     locationName: 'Haifa Bay',
     count: 3,

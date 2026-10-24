@@ -7,7 +7,7 @@
     type="text"
     autocomplete="off"
     spellcheck="false"
-    placeholder="e.g. House Sparrow or Passer domesticus"
+    placeholder="e.g. House Sparrow or דרור הבית"
     [value]="text()"
     (input)="onInput(inputEl.value)"
     [matAutocomplete]="auto"
@@ -35,13 +35,16 @@
       <mat-option [value]="s">
         <span class="opt">
           <span class="opt-common">{{ s.commonName }}</span>
+          @if (s.hebrewName) {
+            <span class="opt-he" dir="rtl" lang="he">{{ s.hebrewName }}</span>
+          }
           <span class="opt-sci">{{ s.scientificName }}</span>
         </span>
       </mat-option>
     }
     @if (showNoMatches()) {
       <mat-option disabled class="no-match">
-        No species match “{{ text() }}”. Try another common or scientific name.
+        No species match “{{ text() }}”. Try another English, Hebrew or scientific name.
       </mat-option>
     }
   </mat-autocomplete>
@@ -60,7 +63,7 @@
       } @else if (selected()) {
         eBird code: {{ selected()!.speciesCode }}
       } @else {
-        Type at least 2 letters of a common or scientific name.
+        Type at least 2 letters of an English, Hebrew or scientific name.
       }
     </mat-hint>
   }

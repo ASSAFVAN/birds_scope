@@ -45,6 +45,13 @@ describe('map marker utils', () => {
     expect(el.textContent).toContain('Passer domesticus');
   });
 
+  it('shows the Hebrew name right-to-left when there is one', () => {
+    const he = buildPopupContent(makeObservation({ hebrewName: 'דרור הבית' })).querySelector<HTMLElement>('.obs-popup__he');
+    expect(he?.textContent).toBe('דרור הבית');
+    expect(he?.dir).toBe('rtl');
+    expect(buildPopupContent(makeObservation()).querySelector('.obs-popup__he')).toBeNull();
+  });
+
   it('adds Waze and Google Maps navigation links for the observation coordinates', () => {
     const el = buildPopupContent(makeObservation({ latitude: 32.5599506, longitude: 35.3886795 }));
     const links = [...el.querySelectorAll<HTMLAnchorElement>('a.obs-popup__nav-link')];

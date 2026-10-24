@@ -35,6 +35,8 @@ export interface ObservationsResponse {
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
+const HEBREW_LETTER = /[\u05d0-\u05ea]/;
+
 /** eBird's cap on the checklist feed (maxResults=1..200). */
 const CHECKLIST_FEED_MAX = 200;
 /** eBird accepts up to 50 location ids in the historic endpoint's r parameter. */
@@ -76,6 +78,7 @@ function dedupeBySpeciesAndLocation(raw: unknown[]): unknown[] {
  */
 export class EbirdService {
   private readonly taxonomyCache = new TtlCache<BirdSpecies[]>(2);
+  private readonly hebrewNameCache = new TtlCache<Map<string, string>>(1);
   private readonly countryCache = new TtlCache<Country[]>(2);
   private readonly observationCache = new TtlCache<ObservationsResponse>(200);
 
@@ -88,20 +91,47 @@ export class EbirdService {
     return this.client.isConfigured;
   }
 
-  /** Species-level taxonomy (cat=species), sorted in taxonomic order. */
+  /** Species-level taxonomy (cat=species), sorted in taxonomic order, with Hebrew names where eBird has them. */
   getTaxonomy(): Promise<BirdSpecies[]> {
     return this.taxonomyCache.getOrLoad('species', this.config.taxonomyTtlMs, async () => {
-      const raw = await this.client.get<RawTaxon[]>('/ref/taxonomy/ebird', {
-        fmt: 'json',
-        cat: 'species',
-        locale: 'en',
-      });
+      const [raw, hebrew] = await Promise.all([
+        this.client.get<RawTaxon[]>('/ref/taxonomy/ebird', { fmt: 'json', cat: 'species', locale: 'en' }),
+        this.getHebrewNames().catch(() => new Map<string, string>()),
+      ]);
       if (!Array.isArray(raw)) throw new ApiError(502, 'UPSTREAM_ERROR', 'Unexpected taxonomy response from eBird.');
       return raw
         .map(normalizeTaxon)
         .filter((t): t is BirdSpecies => t !== null)
+        .map((t) => ({ ...t, hebrewName: hebrew.get(t.speciesCode) ?? null }))
         .sort((a, b) => (a.taxonOrder ?? Infinity) - (b.taxonOrder ?? Infinity));
     });
+  }
+
+  /**
+   * speciesCode → Hebrew common name, from eBird's Hebrew taxonomy (locale=he).
+   * eBird falls back to the English name for species without a Hebrew one, so
+   * only names that actually contain Hebrew letters are kept.
+   */
+  private getHebrewNames(): Promise<Map<string, string>> {
+    return this.hebrewNameCache.getOrLoad('he', this.config.taxonomyTtlMs, async () => {
+      const raw = await this.client.get<RawTaxon[]>('/ref/taxonomy/ebird', { fmt: 'json', cat: 'species', locale: 'he' });
+      const names = new Map<string, string>();
+      if (!Array.isArray(raw)) return names;
+      for (const t of raw) {
+        if (t.speciesCode && t.comName && HEBREW_LETTER.test(t.comName)) names.set(t.speciesCode, t.comName);
+      }
+      return names;
+    });
+  }
+
+  /** Best effort: observations are still returned (without Hebrew names) if the Hebrew taxonomy fails. */
+  private async withHebrewNames(response: ObservationsResponse): Promise<ObservationsResponse> {
+    const names = await this.getHebrewNames().catch(() => null);
+    if (!names) return response;
+    return {
+      ...response,
+      observations: response.observations.map((o) => ({ ...o, hebrewName: names.get(o.speciesCode) ?? null })),
+    };
   }
 
   getCountries(): Promise<Country[]> {
@@ -120,7 +150,7 @@ export class EbirdService {
    * eBird returns the most recent observation of each species at each
    * location within `back` days, not every individual sighting.
    */
-  getRecent(regionCode: string, speciesCode: string | undefined): Promise<ObservationsResponse> {
+  async getRecent(regionCode: string, speciesCode: string | undefined): Promise<ObservationsResponse> {
     const back = this.config.recentBackDays;
     const maxResults = this.config.maxResults;
     const path = speciesCode
@@ -128,7 +158,7 @@ export class EbirdService {
       : `/data/obs/${regionCode}/recent`;
     const key = `recent:${regionCode}:${speciesCode ?? '*'}:${back}:${maxResults}`;
 
-    return this.observationCache.getOrLoad(key, this.config.observationsTtlMs, async () => {
+    const response = await this.observationCache.getOrLoad(key, this.config.observationsTtlMs, async () => {
       const raw = await this.client.get<unknown>(path, { back, maxResults, sppLocale: 'en' });
       const observations = normalizeObservations(raw);
       const upstreamCount = Array.isArray(raw) ? raw.length : 0;
@@ -150,6 +180,7 @@ export class EbirdService {
         },
       };
     });
+    return this.withHebrewNames(response);
   }
 
   /**
@@ -221,10 +252,10 @@ export class EbirdService {
       throw err;
     }
 
-    if (!speciesCode) return full;
-    return {
+    if (!speciesCode) return this.withHebrewNames(full);
+    return this.withHebrewNames({
       observations: full.observations.filter((o) => o.speciesCode === speciesCode),
       meta: { ...full.meta, speciesCode },
-    };
+    });
   }
 }

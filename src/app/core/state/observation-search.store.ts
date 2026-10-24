@@ -133,6 +133,7 @@ export class ObservationSearchStore {
         category: 'species',
         taxonOrder: null,
         familyCommonName: null,
+        hebrewName: null,
       });
     } else {
       this.species.set(null);

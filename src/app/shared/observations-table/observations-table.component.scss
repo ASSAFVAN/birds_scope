@@ -35,6 +35,13 @@ table {
   }
 }
 
+.he-name {
+  display: block;
+  width: fit-content;
+  font-size: 0.9em;
+  color: var(--mat-sys-on-surface-variant);
+}
+
 .num {
   text-align: end;
   font-variant-numeric: tabular-nums;

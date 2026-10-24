@@ -137,20 +137,53 @@ describe('BirdScope API proxy', () => {
     await request(app).get('/api/observations/historic/IL/2024/02/29').expect(200);
   });
 
-  it('caches taxonomy and normalizes it', async () => {
-    const { app, fetchMock } = setup(() =>
-      json([
-        { speciesCode: 'houspa', comName: 'House Sparrow', sciName: 'Passer domesticus', category: 'species', taxonOrder: 2 },
-        { speciesCode: 'ostric2', comName: 'Common Ostrich', sciName: 'Struthio camelus', category: 'species', taxonOrder: 1 },
-      ]),
+  it('caches taxonomy, normalizes it and adds Hebrew names', async () => {
+    const { app, fetchMock } = setup((url) =>
+      url.searchParams.get('locale') === 'he'
+        ? json([
+            { speciesCode: 'houspa', comName: 'דרור הבית', sciName: 'Passer domesticus' },
+            // eBird falls back to English when it has no Hebrew name
+            { speciesCode: 'ostric2', comName: 'Common Ostrich', sciName: 'Struthio camelus' },
+          ])
+        : json([
+            { speciesCode: 'houspa', comName: 'House Sparrow', sciName: 'Passer domesticus', category: 'species', taxonOrder: 2 },
+            { speciesCode: 'ostric2', comName: 'Common Ostrich', sciName: 'Struthio camelus', category: 'species', taxonOrder: 1 },
+          ]),
     );
     const first = await request(app).get('/api/taxonomy').expect(200);
     await request(app).get('/api/taxonomy').expect(200);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(first.body[0]).toMatchObject({ speciesCode: 'ostric2', commonName: 'Common Ostrich', scientificName: 'Struthio camelus' });
-    const url = new URL(String(fetchMock.mock.calls[0]![0]));
-    expect(url.searchParams.get('fmt')).toBe('json');
-    expect(url.searchParams.get('cat')).toBe('species');
+    expect(fetchMock).toHaveBeenCalledTimes(2); // English + Hebrew, then cached
+    expect(first.body[0]).toMatchObject({ speciesCode: 'ostric2', commonName: 'Common Ostrich', scientificName: 'Struthio camelus', hebrewName: null });
+    expect(first.body[1]).toMatchObject({ speciesCode: 'houspa', commonName: 'House Sparrow', hebrewName: 'דרור הבית' });
+    const urls = fetchMock.mock.calls.map(([u]) => new URL(String(u)));
+    expect(urls.every((u) => u.searchParams.get('fmt') === 'json' && u.searchParams.get('cat') === 'species')).toBe(true);
+    expect(urls.map((u) => u.searchParams.get('locale')).sort()).toEqual(['en', 'he']);
+  });
+
+  it('lets browsers revalidate the taxonomy with a cheap 304 instead of caching it blindly', async () => {
+    const { app } = setup(() => json([{ speciesCode: 'houspa', comName: 'House Sparrow', sciName: 'Passer domesticus' }]));
+    const first = await request(app).get('/api/taxonomy').expect(200);
+    expect(first.headers['cache-control']).toBe('no-cache');
+    expect(first.headers['etag']).toBeTruthy();
+    await request(app).get('/api/taxonomy').set('If-None-Match', first.headers['etag']!).expect(304);
+  });
+
+  it('adds Hebrew names to observations', async () => {
+    const { app } = setup((url) =>
+      url.pathname === '/v2/ref/taxonomy/ebird'
+        ? json([{ speciesCode: 'houspa', comName: 'דרור הבית', sciName: 'Passer domesticus' }])
+        : json(historicDay),
+    );
+    const res = await request(app).get('/api/observations/historic/IL/2025/11/15');
+    const names = Object.fromEntries(res.body.observations.map((o: { speciesCode: string; hebrewName: string | null }) => [o.speciesCode, o.hebrewName]));
+    expect(names).toEqual({ houspa: 'דרור הבית', comkin1: null });
+  });
+
+  it('still returns observations when the Hebrew taxonomy fails', async () => {
+    const { app } = setup((url) => (url.pathname === '/v2/ref/taxonomy/ebird' ? json({}, 500) : json(historicDay)));
+    const res = await request(app).get('/api/observations/recent/IL?species=houspa');
+    expect(res.status).toBe(200);
+    expect(res.body.observations[0].hebrewName).toBeNull();
   });
 
   it('reports a missing API key clearly', async () => {
@@ -206,7 +239,8 @@ describe('BirdScope API proxy', () => {
   it('serves the web app and falls back to index.html when STATIC_DIR is set', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'birdscope-web-'));
     writeFileSync(join(dir, 'index.html'), '<!doctype html><title>BirdScope</title>');
-    writeFileSync(join(dir, 'main-ABC123.js'), 'console.log(1);');
+    writeFileSync(join(dir, 'main-ABCD1234.js'), 'console.log(1);');
+    writeFileSync(join(dir, 'ngsw-worker.js'), '/* sw */');
     const { app } = setup(() => json({}), { STATIC_DIR: dir });
 
     const index = await request(app).get('/');
@@ -214,9 +248,13 @@ describe('BirdScope API proxy', () => {
     expect(index.text).toContain('BirdScope');
     expect(index.headers['cache-control']).toBe('no-cache');
 
-    const bundle = await request(app).get('/main-ABC123.js');
+    const bundle = await request(app).get('/main-ABCD1234.js');
     expect(bundle.status).toBe(200);
     expect(bundle.headers['cache-control']).toContain('immutable');
+
+    // The service worker must never be cached long, or installed apps would never update.
+    const worker = await request(app).get('/ngsw-worker.js');
+    expect(worker.headers['cache-control']).toBe('no-cache');
 
     const deepLink = await request(app).get('/some/page');
     expect(deepLink.status).toBe(200);

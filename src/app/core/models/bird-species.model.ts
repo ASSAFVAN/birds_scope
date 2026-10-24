@@ -7,6 +7,8 @@ export interface BirdSpecies {
   category: string;
   taxonOrder: number | null;
   familyCommonName: string | null;
+  /** Official Hebrew name from eBird, null when eBird has none. */
+  hebrewName: string | null;
 }
 
 /** A country from GET /api/countries (eBird /ref/region/list/country/world). */

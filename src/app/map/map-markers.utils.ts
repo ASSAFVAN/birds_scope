@@ -69,6 +69,15 @@ export function buildPopupContent(o: Observation, doc: Document = document): HTM
   title.textContent = o.commonName;
   root.appendChild(title);
 
+  if (o.hebrewName) {
+    const he = doc.createElement('span');
+    he.className = 'obs-popup__he';
+    he.dir = 'rtl';
+    he.lang = 'he';
+    he.textContent = o.hebrewName;
+    root.appendChild(he);
+  }
+
   if (o.scientificName) {
     const sci = doc.createElement('em');
     sci.className = 'obs-popup__sci';

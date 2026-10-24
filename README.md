@@ -5,7 +5,9 @@ Search, explore and map bird observations from the [eBird API v2](https://docume
 - **Recent Observations**: the latest sightings of a species (or all species) in a country over the last 10 days.
 - **Observation History**: sightings of one species in one country on **one specific date**.
 - Results appear on a **Leaflet map** (clustered pins, popups) and in a **sortable, paginated table**. Selecting a row highlights its pin and selecting a pin highlights its row.
-- Species autocomplete works with **common or scientific names** and always resolves to the canonical eBird species code.
+- Species autocomplete works with **English, Hebrew or scientific names** and always resolves to the canonical eBird species code. Hebrew names come from eBird's own Hebrew taxonomy (not a translation) and are shown in the suggestions, table and map popups.
+- Map popups have **Waze** and **Google Maps** buttons that navigate to the sighting.
+- **Installable (PWA)**: add it to your phone's home screen. The app shell works offline, the species list is cached for a day, and recent search results are served from cache when the network is slow (10 s) or gone. A "Reload" prompt appears when a new version is deployed.
 - The 10 most recent distinct searches are kept in `localStorage`. Click one to rerun it.
 
 Stack: Angular 21 (standalone, zoneless, Signals), Angular Material 3, Leaflet + Leaflet.markercluster, and a Node/Express proxy that keeps the eBird API key server-side.
@@ -75,7 +77,7 @@ All responses are JSON. Errors always have the shape `{ "error": { "code": "..."
 | Endpoint | eBird endpoint used | Notes |
 |---|---|---|
 | `GET /api/health` | – | `{ status, apiKeyConfigured }` |
-| `GET /api/taxonomy` | `GET /v2/ref/taxonomy/ebird?fmt=json&cat=species&locale=en` | Species-level entries only, normalized and sorted by taxonomic order. Cached 24 h in memory. |
+| `GET /api/taxonomy` | `GET /v2/ref/taxonomy/ebird?fmt=json&cat=species&locale=en` and `locale=he` | Species-level entries only, normalized and sorted by taxonomic order, with `hebrewName` where eBird has one. Cached 24 h in memory. Observation responses get `hebrewName` from the same cache. |
 | `GET /api/countries` | `GET /v2/ref/region/list/country/world` | Valid eBird country codes. Cached 24 h. |
 | `GET /api/observations/recent/:region?species=code` | `GET /v2/data/obs/{region}/recent/{species}` or `/recent` when `species` is omitted | `back=10`, `maxResults=5000` (configurable). |
 | `GET /api/observations/historic/:region/:yyyy/:mm/:dd?species=code` | `GET /v2/product/lists/{region}/{y}/{m}/{d}`, then `GET /v2/data/obs/{region}/historic/{y}/{m}/{d}` region-wide and with `r=` (50 locations per call) | `rank=mrec`, `detail=simple`, `maxResults=10000`. Merged per species and location, filtered by species code on the server, and again in the client. |

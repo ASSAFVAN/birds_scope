@@ -78,6 +78,10 @@ body {
     font: var(--mat-sys-title-small);
   }
 
+  &__he {
+    align-self: flex-start;
+  }
+
   &__sci {
     color: var(--mat-sys-on-surface-variant);
   }

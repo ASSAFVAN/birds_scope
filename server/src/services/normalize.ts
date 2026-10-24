@@ -43,6 +43,8 @@ export interface BirdSpecies {
   category: string;
   taxonOrder: number | null;
   familyCommonName: string | null;
+  /** Official Hebrew name from eBird's Hebrew taxonomy (locale=he), null when eBird has none. */
+  hebrewName: string | null;
 }
 
 export interface Country {
@@ -55,6 +57,8 @@ export interface Observation {
   speciesCode: string;
   commonName: string;
   scientificName: string;
+  /** Filled in by EbirdService from the Hebrew taxonomy; null when unknown. */
+  hebrewName: string | null;
   locationId: string | null;
   locationName: string | null;
   /** null = species reported as present without a count ("X"). */
@@ -80,6 +84,7 @@ export function normalizeTaxon(raw: RawTaxon): BirdSpecies | null {
     category: raw.category ?? 'species',
     taxonOrder: typeof raw.taxonOrder === 'number' ? raw.taxonOrder : null,
     familyCommonName: raw.familyComName ?? null,
+    hebrewName: null,
   };
 }
 
@@ -106,6 +111,7 @@ export function normalizeObservation(raw: RawObservation, index: number): Observ
     speciesCode: raw.speciesCode,
     commonName: raw.comName ?? raw.speciesCode,
     scientificName: raw.sciName ?? '',
+    hebrewName: null,
     locationId: raw.locId ?? null,
     locationName: raw.locName ?? null,
     count: count !== null && count >= 0 ? count : null,

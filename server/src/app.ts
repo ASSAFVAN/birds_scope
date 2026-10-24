@@ -1,12 +1,14 @@
 import compression from 'compression';
 import express, { type Express } from 'express';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import type { AppConfig } from './config/env.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
 import { createRateLimiter } from './middleware/rate-limit.js';
 import { createEbirdRouter } from './routes/ebird.routes.js';
 import { EbirdClient, type FetchLike } from './services/ebird-client.js';
 import { EbirdService } from './services/ebird.service.js';
+
+const HASHED_BUNDLE = /-[A-Z0-9]{8}\.(?:js|css)$/;
 
 export interface AppDeps {
   config: AppConfig;
@@ -46,13 +48,16 @@ export function createApp({ config, fetchImpl, now }: AppDeps): Express {
 
   if (config.staticDir) {
     const indexHtml = join(config.staticDir, 'index.html');
-    // Hashed bundles can be cached for a long time; index.html must stay fresh to pick up new builds.
+    // Hashed bundles (main-ABCD1234.js) can be cached for a long time. Everything else — index.html,
+    // the service worker (ngsw-worker.js, ngsw.json), manifest and icons — must revalidate so
+    // installed apps pick up new builds.
     app.use(
       express.static(config.staticDir, {
-        maxAge: '1y',
-        immutable: true,
         setHeaders: (res, path) => {
-          if (path.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache');
+          res.setHeader(
+            'Cache-Control',
+            HASHED_BUNDLE.test(basename(path)) ? 'public, max-age=31536000, immutable' : 'no-cache',
+          );
         },
       }),
     );

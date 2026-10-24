@@ -4,6 +4,8 @@ export interface Observation {
   speciesCode: string;
   commonName: string;
   scientificName: string;
+  /** Official Hebrew name from eBird, null when eBird has none. */
+  hebrewName: string | null;
   locationId: string | null;
   locationName: string | null;
   /** null = reported as present without a count ("X" on the checklist). */
