@@ -75,7 +75,8 @@ export class LeafletMapService {
         keyboard: true,
         riseOnHover: true,
       });
-      marker.bindPopup(() => buildPopupContent(m.observation), { maxWidth: 280 });
+      // Extra top-left padding so auto-pan keeps the popup clear of the zoom control.
+      marker.bindPopup(() => buildPopupContent(m.observation), { maxWidth: 280, autoPanPaddingTopLeft: [56, 16] });
       marker.on('click', () => this.onSelect(m.id));
       this.markers.set(m.id, marker);
       layers.push(marker);

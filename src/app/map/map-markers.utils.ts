@@ -94,6 +94,18 @@ export function buildPopupContent(o: Observation, doc: Document = document): HTM
   }
   root.appendChild(list);
 
+  // Navigation deep links: on phones these open the Waze / Google Maps apps when installed.
+  if (isValidCoordinate(o.latitude, o.longitude)) {
+    const ll = `${o.latitude!.toFixed(6)},${o.longitude!.toFixed(6)}`;
+    const nav = doc.createElement('div');
+    nav.className = 'obs-popup__nav';
+    nav.append(
+      navLink(doc, `https://waze.com/ul?ll=${ll}&navigate=yes`, 'directions_car', 'Waze', 'Navigate with Waze'),
+      navLink(doc, `https://www.google.com/maps/dir/?api=1&destination=${ll}`, 'map', 'Google Maps', 'Navigate with Google Maps'),
+    );
+    root.appendChild(nav);
+  }
+
   if (o.checklistId && /^S\d+$/.test(o.checklistId)) {
     const link = doc.createElement('a');
     link.href = `https://ebird.org/checklist/${o.checklistId}`;
@@ -103,4 +115,19 @@ export function buildPopupContent(o: Observation, doc: Document = document): HTM
     root.appendChild(link);
   }
   return root;
+}
+
+function navLink(doc: Document, href: string, icon: string, label: string, ariaLabel: string): HTMLAnchorElement {
+  const link = doc.createElement('a');
+  link.className = 'obs-popup__nav-link';
+  link.href = href;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.setAttribute('aria-label', ariaLabel);
+  const iconEl = doc.createElement('span');
+  iconEl.className = 'material-icons';
+  iconEl.setAttribute('aria-hidden', 'true');
+  iconEl.textContent = icon;
+  link.append(iconEl, doc.createTextNode(label));
+  return link;
 }

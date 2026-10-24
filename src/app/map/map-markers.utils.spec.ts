@@ -44,4 +44,19 @@ describe('map marker utils', () => {
     expect(el.textContent).toContain('House Sparrow');
     expect(el.textContent).toContain('Passer domesticus');
   });
+
+  it('adds Waze and Google Maps navigation links for the observation coordinates', () => {
+    const el = buildPopupContent(makeObservation({ latitude: 32.5599506, longitude: 35.3886795 }));
+    const links = [...el.querySelectorAll<HTMLAnchorElement>('a.obs-popup__nav-link')];
+    expect(links.map((a) => a.href)).toEqual([
+      'https://waze.com/ul?ll=32.559951,35.388680&navigate=yes',
+      'https://www.google.com/maps/dir/?api=1&destination=32.559951,35.388680',
+    ]);
+    expect(links.every((a) => a.target === '_blank' && a.rel.includes('noopener'))).toBe(true);
+  });
+
+  it('omits navigation links when the coordinates are invalid', () => {
+    const el = buildPopupContent(makeObservation({ latitude: null }));
+    expect(el.querySelector('.obs-popup__nav')).toBeNull();
+  });
 });
