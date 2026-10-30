@@ -52,4 +52,8 @@ export class ObservationHistoryComponent {
   protected clearRecent(): void {
     this.recentSearchService.clear('history');
   }
+
+  protected removeRecent(entry: RecentSearchEntry): void {
+    this.recentSearchService.remove(entry);
+  }
 }

@@ -71,6 +71,13 @@ export class RecentSearchService {
     this.write(next);
   }
 
+  /** Removes one saved search (matched like duplicates are: mode, species, country, date). */
+  remove(entry: RecentSearchEntry): void {
+    const next = this.state().filter((e) => !isSameSearch(e, entry));
+    this.state.set(next);
+    this.write(next);
+  }
+
   clear(mode?: SearchMode): void {
     const next = mode ? this.state().filter((e) => e.mode !== mode) : [];
     this.state.set(next);

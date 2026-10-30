@@ -30,6 +30,7 @@
       [disabled]="store.loading()"
       (searchSelected)="restore($event)"
       (clearRequested)="clearRecent()"
+      (removeRequested)="removeRecent($event)"
     />
   </mat-card>
 

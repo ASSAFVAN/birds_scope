@@ -93,6 +93,25 @@ describe('RecentSearchService', () => {
     expect(storage.getItem(RECENT_SEARCHES_KEY)).toBeNull();
   });
 
+  it('removes a single entry and persists the rest', () => {
+    const service = create(storage);
+    service.add(entry({ speciesCode: 'houspa', timestamp: 1 }));
+    service.add(entry({ speciesCode: 'comkin1', commonName: 'Common Kingfisher', timestamp: 2 }));
+    service.add(entry({ mode: 'history', date: { year: 2025, month: 1, day: 1 }, timestamp: 3 }));
+    service.remove(entry({ speciesCode: 'comkin1', timestamp: 2 }));
+    expect(service.entries().map((e) => `${e.mode}:${e.speciesCode}`)).toEqual(['history:houspa', 'recent:houspa']);
+    expect(create(storage).entries()).toHaveLength(2);
+  });
+
+  it('removing a history search keeps the same species on other dates', () => {
+    const service = create(storage);
+    const jan1 = entry({ mode: 'history', date: { year: 2025, month: 1, day: 1 }, timestamp: 1 });
+    service.add(jan1);
+    service.add(entry({ mode: 'history', date: { year: 2025, month: 1, day: 2 }, timestamp: 2 }));
+    service.remove(jan1);
+    expect(service.entries().map((e) => e.date?.day)).toEqual([2]);
+  });
+
   it('ignores malformed storage content', () => {
     storage.setItem(RECENT_SEARCHES_KEY, '{not json');
     expect(create(storage).entries()).toEqual([]);

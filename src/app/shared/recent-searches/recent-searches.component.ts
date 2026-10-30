@@ -7,11 +7,20 @@ import { MatListModule } from '@angular/material/list';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import type { RecentSearchEntry } from '../../core/models/bird-search.model';
 import { formatHistoricDate } from '../../core/utils/date.utils';
+import { SwipeToDeleteDirective } from './swipe-to-delete.directive';
 
-/** Compact, collapsible list of recent searches. Clicking an entry reruns it. */
+/** Compact, collapsible list of recent searches. Clicking an entry reruns it; × (or a sideways swipe on touch screens) removes just that one. */
 @Component({
   selector: 'app-recent-searches',
-  imports: [DatePipe, MatButtonModule, MatExpansionModule, MatIconModule, MatListModule, MatTooltipModule],
+  imports: [
+    DatePipe,
+    MatButtonModule,
+    MatExpansionModule,
+    MatIconModule,
+    MatListModule,
+    MatTooltipModule,
+    SwipeToDeleteDirective,
+  ],
   template: `
     <mat-expansion-panel class="recent-panel" [expanded]="false">
       <mat-expansion-panel-header>
@@ -27,19 +36,37 @@ import { formatHistoricDate } from '../../core/utils/date.utils';
       } @else {
         <mat-action-list dense aria-label="Recent searches">
           @for (e of entries(); track e.timestamp) {
-            <button mat-list-item type="button" (click)="searchSelected.emit(e)" [disabled]="disabled()">
-              <mat-icon matListItemIcon aria-hidden="true">{{ e.mode === 'history' ? 'event' : 'schedule' }}</mat-icon>
-              <span matListItemTitle>{{ e.commonName ?? 'All species' }} · {{ e.countryCode }}</span>
-              <span matListItemLine class="meta">
-                @if (e.date) {
-                  {{ dateLabel(e) }} ·
-                }
-                @if (e.scientificName) {
-                  <em>{{ e.scientificName }}</em> ·
-                }
-                searched {{ e.timestamp | date: 'MMM d, HH:mm' }}
-              </span>
-            </button>
+            <div class="swipe">
+              <div class="swipe-bg" aria-hidden="true">
+                <mat-icon>delete</mat-icon>
+                <mat-icon>delete</mat-icon>
+              </div>
+              <div class="row" appSwipeToDelete (swipeDelete)="removeRequested.emit(e)">
+                <button mat-list-item class="entry" type="button" (click)="searchSelected.emit(e)" [disabled]="disabled()">
+                  <mat-icon matListItemIcon aria-hidden="true">{{ e.mode === 'history' ? 'event' : 'schedule' }}</mat-icon>
+                  <span matListItemTitle>{{ label(e) }}</span>
+                  <span matListItemLine class="meta">
+                    @if (e.date) {
+                      {{ dateLabel(e) }} ·
+                    }
+                    @if (e.scientificName) {
+                      <em>{{ e.scientificName }}</em> ·
+                    }
+                    searched {{ e.timestamp | date: 'MMM d, HH:mm' }}
+                  </span>
+                </button>
+                <button
+                  mat-icon-button
+                  class="remove"
+                  type="button"
+                  (click)="removeRequested.emit(e)"
+                  [attr.aria-label]="'Remove ' + label(e) + (e.date ? ', ' + dateLabel(e) : '') + ' from recent searches'"
+                  matTooltip="Remove"
+                >
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+            </div>
           }
         </mat-action-list>
         <div class="actions">
@@ -57,6 +84,25 @@ import { formatHistoricDate } from '../../core/utils/date.utils';
     .empty { margin: 0; color: var(--mat-sys-on-surface-variant); font: var(--mat-sys-body-medium); }
     .meta { color: var(--mat-sys-on-surface-variant); }
     .actions { display: flex; justify-content: flex-end; }
+    .swipe { position: relative; overflow: hidden; }
+    .swipe-bg {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      background: var(--mat-sys-error);
+      color: var(--mat-sys-on-error);
+    }
+    .row {
+      position: relative;
+      display: flex;
+      align-items: center;
+      background: var(--mat-expansion-container-background-color, var(--mat-sys-surface));
+    }
+    .entry { flex: 1; min-width: 0; }
+    .remove { flex: none; color: var(--mat-sys-on-surface-variant); }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -65,6 +111,11 @@ export class RecentSearchesComponent {
   readonly disabled = input(false);
   readonly searchSelected = output<RecentSearchEntry>();
   readonly clearRequested = output<void>();
+  readonly removeRequested = output<RecentSearchEntry>();
+
+  protected label(e: RecentSearchEntry): string {
+    return `${e.commonName ?? 'All species'} · ${e.countryCode}`;
+  }
 
   protected dateLabel(e: RecentSearchEntry): string {
     return e.date ? formatHistoricDate(e.date) : '';

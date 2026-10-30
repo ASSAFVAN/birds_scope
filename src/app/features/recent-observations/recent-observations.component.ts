@@ -52,4 +52,8 @@ export class RecentObservationsComponent {
   protected clearRecent(): void {
     this.recentSearchService.clear('recent');
   }
+
+  protected removeRecent(entry: RecentSearchEntry): void {
+    this.recentSearchService.remove(entry);
+  }
 }
